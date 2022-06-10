@@ -2,18 +2,19 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
 )
 
 type Block struct {
 	Hash         []byte
-	Data         []byte
+	Transactions []*Transaction
 	PreviousHash []byte
 	Nonce        int
 }
 
-func CreateBlock(data string, previousHash []byte) *Block {
-	block := &Block{[]byte{}, []byte(data), previousHash, 0}
+func CreateBlock(transactions []*Transaction, previousHash []byte) *Block {
+	block := &Block{[]byte{}, transactions, previousHash, 0}
 	pow := NewProof(block)
 	nonce, hash := pow.Run()
 	block.Hash = hash[:]
@@ -21,8 +22,18 @@ func CreateBlock(data string, previousHash []byte) *Block {
 	return block
 }
 
-func FatherBlock() *Block {
-	return CreateBlock("father", []byte{})
+func (block *Block) HashTransactions() []byte {
+	var txHashes [][]byte
+	var txHash [32]byte
+	for _, tx := range block.Transactions {
+		txHashes = append(txHashes, tx.Id)
+	}
+	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	return txHash[:]
+}
+
+func FatherBlock(coinbase *Transaction) *Block {
+	return CreateBlock([]*Transaction{coinbase}, []byte{})
 }
 
 func (block *Block) Serialize() []byte {
